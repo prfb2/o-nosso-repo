@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Votação de ideias · JUNITEC</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#175FAA;color:#F6F6F6;font-family:'Montserrat',Arial,sans-serif;font-weight:400;line-height:1.5}
+.wrap{max-width:960px;margin:0 auto;padding:32px 20px}
+h1{margin:0;font-weight:700;font-size:30px}
+.barra{width:120px;height:6px;border-radius:6px;background:#74D1EF;margin:12px 0 16px}
+.intro{color:#E2EEFF;margin:0 0 24px}
+.grelha{display:grid;grid-template-columns:1.1fr 1fr;gap:20px}
+.cartao{background:#F6F6F6;color:#3D4F6B;border-radius:12px;padding:20px}
+.cartao h2{color:#175FAA;font-weight:700;font-size:18px;margin:0 0 12px}
+label{font-weight:600;font-size:13px;display:block;margin-bottom:4px}
+input[type=text]{width:100%;padding:10px;border:1px solid #C9DAEE;border-radius:8px;font:inherit;color:#3D4F6B;background:#fff}
+.linha{display:flex;gap:8px;margin-bottom:12px}
+.linha input{flex:1}
+button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:10px 14px;background:#74D1EF;color:#0944A1;cursor:pointer}
+button.sec{background:#fff;border:1px solid #C9DAEE;color:#175FAA}
+button:focus-visible,.quadrado:focus-visible,input:focus-visible{outline:3px solid #0944A1;outline-offset:2px}
+.aviso{font-size:12px;color:#3D4F6B;margin:0 0 12px}
+ul{list-style:none;margin:0;padding:0}
+li.ideia{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #C9DAEE}
+li.ideia:first-child{border-top:0}
+/* Quadrado pequeno que se clica para votar */
+.quadrado{flex:none;width:28px;height:28px;border:2px solid #175FAA;border-radius:6px;background:#fff;cursor:pointer;padding:0;color:#0944A1;font-size:18px;font-weight:800;line-height:1}
+.quadrado.on{background:#74D1EF}
+.texto{flex:1;font-weight:600}
+.num{font-weight:700;color:#175FAA;min-width:28px;text-align:right}
+.rm{background:none;color:#3D4F6B;padding:4px 8px;font-size:18px}
+/* Gráfico de barras */
+.item{margin-bottom:12px}
+.item .nome{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:600;margin-bottom:4px}
+.pista{background:#E2EEFF;border-radius:6px;height:22px;overflow:hidden}
+.fill{height:100%;background:#74D1EF;border-radius:6px;min-width:4px;transition:width .3s}
+.leg{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.leg div{display:flex;align-items:center;gap:8px}
+.leg i{flex:none;width:14px;height:14px;border-radius:3px;border:1px solid #3D4F6B}
+.leg span{flex:1;font-weight:600}
+.leg b{color:#175FAA;white-space:nowrap}
+.destaque{background:#175FAA;color:#F6F6F6;border-radius:10px;padding:14px 16px;margin-bottom:16px}
+.destaque small{color:#E2EEFF;display:block}
+.destaque strong{display:block;font-size:20px;color:#74D1EF}
+.botoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+footer{margin-top:28px;font-size:12px;color:#E2EEFF}
+#estado{font-size:12px;color:#175FAA;font-weight:600;min-height:18px;margin-top:8px}
+@media(max-width:640px){.grelha{grid-template-columns:1fr}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Votação de ideias</h1>
+  <div class="barra"></div>
+  <p class="intro">Para os consultores da JUNITEC que fizeram o brainstorm: escolhe o teu nome, clica no quadrado das ideias que preferes e vê as mais votadas no gráfico.</p>
+
+  <div class="grelha">
+    <section class="cartao">
+      <h2>Ideias</h2>
+      <label for="votante">O teu nome</label>
+      <div class="linha"><input type="text" id="votante" placeholder="Ex.: Ana"></div>
+      <p class="aviso">Podes votar em várias ideias. Clica outra vez no quadrado para retirar o voto.</p>
+      <ul id="lista"></ul>
+      <div class="linha" style="margin-top:14px">
+        <input type="text" id="nova" placeholder="Nova ideia" aria-label="Nova ideia">
+        <button id="btnAdd">Adicionar</button>
+      </div>
+    </section>
+
+    <section class="cartao">
+      <h2>Votos por ideia</h2>
+      <div class="destaque">
+        <small>Ideia em primeiro lugar</small>
+        <strong id="lider">–</strong>
+        <small id="total"></small>
+      </div>
+      <div id="grafico"></div>
+      <div class="botoes">
+        <button id="btnCopiar">Copiar resultado</button>
+        <button class="sec" id="btnCsv">Exportar CSV</button>
+        <button class="sec" id="btnReset">Repor exemplo</button>
+      </div>
+      <div id="estado" role="status"></div>
+      <p class="aviso" style="margin-top:12px">Os votos ficam guardados só neste browser (localStorage). Para juntar votos de várias pessoas, usa o mesmo computador ou exporta o resultado. As ideias e os votos iniciais são exemplos.</p>
+    </section>
+  </div>
+  <footer>Feito pela JUNITEC</footer>
+</div>
+
+<script>
+// ---------- Estado ----------
+const CHAVE = 'junitec-votacao-ideias';
+// Exemplo inicial (dados fictícios)
+function exemplo() {
+  return {
+    proximoId: 7,
+    ideias: [
+      {id:1, texto:'Workshop mensal com clientes (exemplo)', votos:['Ana','Rui','Marta']},
+      {id:2, texto:'Painel de indicadores partilhado (exemplo)', votos:['Rui','Marta']},
+      {id:3, texto:'Kit de boas-vindas para novos consultores (exemplo)', votos:['Ana']},
+      {id:4, texto:'Biblioteca de casos de sucesso (exemplo)', votos:['Marta','Ana','Rui','João']},
+      {id:5, texto:'Mentoria entre equipas (exemplo)', votos:['João']},
+      {id:6, texto:'Newsletter interna de inovação (exemplo)', votos:[]}
+    ]
+  };
+}
+let estado = carregar();
+
+function carregar() {
+  try { const s = localStorage.getItem(CHAVE); if (s) return JSON.parse(s); } catch (e) {}
+  return exemplo();
+}
+function guardar() {
+  try { localStorage.setItem(CHAVE, JSON.stringify(estado)); } catch (e) {}
+}
+
+// ---------- Lógica ----------
+function nomeVotante() { return document.getElementById('votante').value.trim(); }
+
+function alternarVoto(id) {
+  const nome = nomeVotante();
+  if (!nome) { aviso('Escreve primeiro o teu nome.'); document.getElementById('votante').focus(); return; }
+  const ideia = estado.ideias.find(i => i.id === id);
+  const pos = ideia.votos.findIndex(v => v.toLowerCase() === nome.toLowerCase());
+  if (pos >= 0) ideia.votos.splice(pos, 1); else ideia.votos.push(nome);
+  guardar(); desenhar();
+}
+
+function adicionarIdeia() {
+  const campo = document.getElementById('nova');
+  const texto = campo.value.trim();
+  if (!texto) return;
+  estado.ideias.push({id: estado.proximoId++, texto, votos: []});
+  campo.value = '';
+  guardar(); desenhar();
+}
+
+function removerIdeia(id) {
+  estado.ideias = estado.ideias.filter(i => i.id !== id);
+  guardar(); desenhar();
+}
+
+function ordenadas() {
+  return [...estado.ideias].sort((a, b) => b.votos.length - a.votos.length);
+}
+
+// ---------- Interface ----------
+function aviso(msg) {
+  const e = document.getElementById('estado');
+  e.textContent = msg;
+  setTimeout(() => { if (e.textContent === msg) e.textContent = ''; }, 2500);
+}
+
+function desenhar() {
+  const nome = nomeVotante().toLowerCase();
+
+  // Lista de ideias com quadrado de voto
+  const lista = document.getElementById('lista');
+  lista.innerHTML = '';
+  estado.ideias.forEach(i => {
+    const meu = nome && i.votos.some(v => v.toLowerCase() === nome);
+    const li = document.createElement('li');
+    li.className = 'ideia';
+    const q = document.createElement('button');
+    q.className = 'quadrado' + (meu ? ' on' : '');
+    q.textContent = meu ? '✓' : '';
+    q.setAttribute('role', 'checkbox');
+    q.setAttribute('aria-checked', meu ? 'true' : 'false');
+    q.setAttribute('aria-label', 'Votar em: ' + i.texto);
+    q.onclick = () => alternarVoto(i.id);
+    const t = document.createElement('span'); t.className = 'texto'; t.textContent = i.texto;
+    const n = document.createElement('span'); n.className = 'num'; n.textContent = i.votos.length;
+    const r = document.createElement('button'); r.className = 'rm'; r.textContent = '×';
+    r.setAttribute('aria-label', 'Remover ideia'); r.onclick = () => removerIdeia(i.id);
+    li.append(q, t, n, r);
+    lista.appendChild(li);
+  });
+
+  // Gráfico em queijo com todas as ideias
+  const top = ordenadas();
+  const totalVotos = estado.ideias.reduce((s, i) => s + i.votos.length, 0);
+  const g = document.getElementById('grafico');
+  g.innerHTML = '';
+  g.appendChild(queijo(top, totalVotos));
+
+  // Resultado em destaque
+  const lider = top[0];
+  document.getElementById('lider').textContent = lider && lider.votos.length ? lider.texto : 'Ainda sem votos';
+  document.getElementById('total').textContent = totalVotos + ' votos no total';
+}
+
+// Cores das fatias (tons da JUNITEC), uma por ideia
+const PALETA = ['#74D1EF', '#175FAA', '#0944A1', '#A9DDF2', '#3D4F6B', '#4D85C2', '#C9DAEE', '#2E9BC9'];
+function corDe(i) { return PALETA[(i.id - 1) % PALETA.length]; }
+
+// Constrói o gráfico em queijo (SVG) e a legenda com todas as ideias
+function queijo(lista, total) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const cx = 100, cy = 100, r = 90;
+  const caixa = document.createElement('div');
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 200 200');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', 'Gráfico circular com os votos por ideia');
+  svg.style.cssText = 'width:100%;max-width:240px;display:block;margin:0 auto 14px';
+  const comVotos = lista.filter(i => i.votos.length > 0);
+
+  function circulo(cor) {
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', r);
+    c.setAttribute('fill', cor); c.setAttribute('stroke', '#3D4F6B'); c.setAttribute('stroke-width', '1');
+    return c;
+  }
+
+  if (total === 0) {
+    svg.appendChild(circulo('#E2EEFF'));
+  } else if (comVotos.length === 1) {
+    svg.appendChild(circulo(corDe(comVotos[0])));
+  } else {
+    let ang = -Math.PI / 2;
+    comVotos.forEach(i => {
+      const fatia = i.votos.length / total * 2 * Math.PI;
+      const x1 = cx + r * Math.cos(ang), y1 = cy + r * Math.sin(ang);
+      ang += fatia;
+      const x2 = cx + r * Math.cos(ang), y2 = cy + r * Math.sin(ang);
+      const p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', 'M' + cx + ' ' + cy + ' L' + x1 + ' ' + y1 + ' A' + r + ' ' + r + ' 0 ' + (fatia > Math.PI ? 1 : 0) + ' 1 ' + x2 + ' ' + y2 + ' Z');
+      p.setAttribute('fill', corDe(i)); p.setAttribute('stroke', '#F6F6F6'); p.setAttribute('stroke-width', '2');
+      const tt = document.createElementNS(NS, 'title');
+      tt.textContent = i.texto + ': ' + i.votos.length + ' votos';
+      p.appendChild(tt);
+      svg.appendChild(p);
+    });
+  }
+  caixa.appendChild(svg);
+
+  // Legenda: todas as ideias, da mais para a menos votada
+  const leg = document.createElement('div'); leg.className = 'leg';
+  lista.forEach(i => {
+    const l = document.createElement('div');
+    const q = document.createElement('i'); q.style.background = corDe(i);
+    const t = document.createElement('span'); t.textContent = i.texto;
+    const n = document.createElement('b');
+    const pct = total ? Math.round(i.votos.length / total * 100) : 0;
+    n.textContent = i.votos.length + (i.votos.length === 1 ? ' voto' : ' votos') + ' · ' + pct + '%';
+    l.append(q, t, n);
+    leg.appendChild(l);
+  });
+  caixa.appendChild(leg);
+  return caixa;
+}
+
+function textoResultado() {
+  return 'Ideias mais votadas:\n' + ordenadas().map((i, n) => (n + 1) + '. ' + i.texto + ' — ' + i.votos.length + ' votos').join('\n');
+}
+
+function copiar() {
+  const t = textoResultado();
+  const ok = () => aviso('Resultado copiado.');
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(ok, () => aviso('Não foi possível copiar.'));
+  else aviso('Não foi possível copiar.');
+}
+
+function exportarCsv() {
+  const linhas = ['ideia;votos;votantes'].concat(ordenadas().map(i =>
+    '"' + i.texto.replace(/"/g, '""') + '";' + i.votos.length + ';"' + i.votos.join(', ') + '"'));
+  const blob = new Blob(['\ufeff' + linhas.join('\n')], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'votacao-ideias.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  aviso('CSV exportado.');
+}
+
+function repor() {
+  estado = exemplo(); guardar(); desenhar(); aviso('Exemplo reposto.');
+}
+
+// ---------- Ligações ----------
+document.getElementById('btnAdd').onclick = adicionarIdeia;
+document.getElementById('nova').addEventListener('keydown', e => { if (e.key === 'Enter') adicionarIdeia(); });
+document.getElementById('votante').addEventListener('input', desenhar);
+document.getElementById('btnCopiar').onclick = copiar;
+document.getElementById('btnCsv').onclick = exportarCsv;
+document.getElementById('btnReset').onclick = repor;
+desenhar();
+</script>
+</body>
+</html>
